@@ -1,0 +1,19 @@
+{
+	"_" : ""
+,	"root": "../exampleOutput"
+,	"keepScratch": "true"
+,	"ignores": [
+		"imports"
+	,	"tmp"
+	]
+,	"typeProps" : {
+		"js" : {
+			"firsts" : [
+				"=~^at_set"
+			]
+		, 	"lasts" : [
+				"=~^at_unset"
+			]
+		}
+	}
+}
