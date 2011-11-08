@@ -11,7 +11,7 @@
 ,	"keepScratch": "false"                    // when true, prevents removal of scratch directory upon completion ( note: if not deleting, and scratch in source dir - scratch should be added to ignores lists )
 ,	"types": [ "js","css","html" ]            // types of files to be grouped / built.
 ,	"ignores": [                              // global folders ignored ( ignored for all file types )
-		"tmp"                                 // ignoring scratch dir, by default.
+		"tmp"                                 // ignoring scratch dir, by default. test
 	]
 ,	"typeProps": {
 		"js": {
