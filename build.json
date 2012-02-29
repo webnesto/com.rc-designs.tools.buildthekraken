@@ -3,9 +3,10 @@
 {
 	"build": "prod"                           // "prod" build type - only valid values are "prod" and "dev"
 ,	"root": ""                                // default's to working directory
-,	"subs": [                                 // series of subfolders to parse as "src" - inherently added to global ignores.
-		""                                    // working directory
-	]
+// NOTE: "subs" not yet implemented
+//,	"subs": [                                 // series of subfolders to parse as "src" - inherently added to global ignores.
+//		""                                    // working directory
+//	]
 ,	"folders": {                              // folders created by builder
 		"scratch": "tmp"                      // directory name/path for temporary file creation during build (will be deleted on cleanup) - created as "root"/"scratch"
 	,	"build":   "bin"                      // target for built files.  NOTE: will be placed inside filetype directory: "root"/[js/css/html]/"build"

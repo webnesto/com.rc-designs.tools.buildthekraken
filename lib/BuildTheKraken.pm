@@ -537,6 +537,7 @@ sub makeFiles {
 sub moveToTarget {
 	my ( $config, $files, $location ) = @_;
 	my $scratch = $config->{ folders }->{ scratch };
+	my $bin = $config->{ folders }->{ build };
 	my $build = $config->{ build };
 	my $root = $config->{ root };
 	my $doCompression = $config->{ prod }->{ compression };
@@ -578,9 +579,10 @@ sub moveToTarget {
 
 
 		if( $buildFolder eq "" ){
-			$buildFolder = File::Spec->catdir( $root, $ext )
+			$buildFolder = File::Spec->catdir( $root, $ext );
+			$buildFolder = File::Spec->catdir( $buildFolder, $bin );
 		} else {
-			$buildFolder = File::Spec->catdir( $root, $buildFolder )
+			$buildFolder = File::Spec->catdir( $root, $buildFolder );
 		}
 
 		-e $buildFolder or mkdir $buildFolder or warn "Cannot make $buildFolder";
