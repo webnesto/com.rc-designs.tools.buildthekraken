@@ -3,6 +3,9 @@
 {
 	"build": "prod"                           // "prod" build type - only valid values are "prod" and "dev"
 ,	"root": ""                                // default's to working directory
+,	"subs": [                                 // series of subfolders to parse as "src" - inherently added to global ignores.
+		""                                    // working directory
+	]
 ,	"folders": {                              // folders created by builder
 		"scratch": "tmp"                      // directory name/path for temporary file creation during build (will be deleted on cleanup) - created as "root"/"scratch"
 	,	"build":   "bin"                      // target for built files.  NOTE: will be placed inside filetype directory: "root"/[js/css/html]/"build"
@@ -11,7 +14,7 @@
 ,	"keepScratch": "false"                    // when true, prevents removal of scratch directory upon completion ( note: if not deleting, and scratch in source dir - scratch should be added to ignores lists )
 ,	"types": [ "js","css","html" ]            // types of files to be grouped / built.
 ,	"ignores": [                              // global folders ignored ( ignored for all file types )
-		"tmp"                                 // ignoring scratch dir, by default. test
+		"tmp"                                 // ignoring scratch dir, by default.
 	]
 ,	"typeProps": {
 		"js": {

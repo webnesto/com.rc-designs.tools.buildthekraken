@@ -2,6 +2,6 @@
 use FindBin qw($Bin);
 use lib "$FindBin::Bin/lib";
 
-use WebKraken;
+use BuildTheKraken;
 
-WebKraken::run( @ARGV );
+BuildTheKraken::run( @ARGV );
