@@ -116,6 +116,7 @@ sub getConfigs {
 #		} elsif( $arg eq "-foo" ){
 #			$argObj->{ "foo" } = "bar";
 		} else {
+			printLog("config file passed as arg: $arg" );
 			push( @configs, from_json_file( getConfig( $arg ) ) );
 		}
 	}
@@ -308,7 +309,7 @@ sub getBuildSorter {
 
 		if( @firsts > 0 ) {  # An array of "first" filenames/patterns has been provided... find the index of current sort files in array
 			$aFirstIndex = first {
-				if( $firsts[$_] =~ /^=~/ ){
+				if( $firsts[$_] =~ /^=~/ ){ #TODO: externalize this logic - add support for "!~" - implement for "ignores", and "subs" (after subs implemented)
 					my $aFirstRe = substr $firsts[$_], 2;
 					return $aDirs[ $#aDirs ] =~ $aFirstRe;
 				} else {
@@ -471,6 +472,14 @@ sub makeFiles {
 	my @argStates;
 	my @fromFiles;
 
+
+	if( File::Spec->file_name_is_absolute( $root ) ){
+		$root = $root;
+	} else {
+		$root = File::Spec->catfile( $location, $root );
+		$root = Cwd::realpath( $root );
+	}
+
 	foreach $type( keys %{ $files } ){
 		$typeProps = $config->{ typeProps }->{ $type };
 		$ext = $typeProps->{ extension };
@@ -514,7 +523,7 @@ sub makeFiles {
 					$relPath = File::Spec->abs2rel( $fromFile, $root ); #$fromFile; #
 					#$relPath =~ s/\Q$location\U//;
 					#$relPath =~ s/\\/\//g;
-					printLog( "rel? $relPath" );
+					#printLog( "rel? $relPath" );
 					$relPath = "$sourceUrl$relPath";    #remains relative as long as $sourceUrl has not been set
 					$tmpStr = $includeString;
 
@@ -560,6 +569,7 @@ sub moveToTarget {
 		$root = $root;
 	} else {
 		$root = File::Spec->catfile( $location, $root );
+		$root = Cwd::realpath( $root );
 	}
 
 
@@ -682,6 +692,8 @@ sub run {
 	my $doDocumentation = $config->{ document };
 	my $minPath;
 	my $keepScratch = $config->{ keepScratch };
+
+	#TODO: implement subs iteration - allow arguments for subs - default "current" directory.
 
 	my ( $files, $filesToDocument ) = getFilenamesByType( $location, $config, \() );
 	-e $scratch or mkdir $scratch, 0777 or warn "Cannot make $scratch directory: $!";
