@@ -37,8 +37,9 @@ use File::Copy;
 use File::Find;
 use File::Path;
 use File::Spec;
-use FindBin qw($Bin);
+use FindBin qw( $Bin );
 use IO::File;
+use List::Util qw( first );
 use Utils qw( printLog extend extendNew from_json_file emptyDirOfType );
 
 #Variables
@@ -162,7 +163,7 @@ sub getFilenamesByType {
 
 		for my $folder (@filenames) {
 			-d $folder or next;		# Only using folders.  Skipping files.
-			if( Utils::indexOf( $folder, \@ignores ) == -1 ){
+			if( indexOfPatternArray( \@ignores, $folder ) == -1 ){
 				printLog( "	+ folder: $folder" );
 				if ( !defined( $extFiles->{ $folder } ) ) {
 					$extFiles->{ $folder } = ();
@@ -282,6 +283,30 @@ sub getFolderToIndex {
 	return $return;
 }
 
+sub indexOfPatternArray{
+	my ( $array, $target ) = @_;
+	my @array = @{ $array };
+	my $return = first {
+		if ( $array[$_] =~ /^=~/ ){
+			my $re = substr $array[$_], 2;
+			return $target =~ $re;
+		}
+		elsif ( $array[$_] =~ /^!~/ ){
+			my $re = substr $array[$_], 2;
+			return $target !~ $re;
+		}
+		else {
+			return $target eq $array[$_];
+		}
+	} 0 .. $#array;
+
+	unless( defined $return ){
+		$return = -1;
+	}
+	printLog( "returning $return for $target" );
+	return $return;
+}
+
 sub getBuildSorter {
 	my ( $firsts, $lasts ) = @_;
 
@@ -289,7 +314,7 @@ sub getBuildSorter {
 		my $la = $a; # lc $a;
 		my $lb = $b; #lc $b;
 
-		#printLog( "\n$la\n$lb" );
+#		printLog( "\n$la\n$lb" );
 
 		my @firsts = @{ $firsts };
 		my @lasts = @{ $lasts };
@@ -300,7 +325,7 @@ sub getBuildSorter {
 		my $aFolder = join( "/", @aDirs[0..(@aDirs - 2)] );
 		my $bFolder = join( "/", @bDirs[0..(@bDirs - 2)] );
 
-		#printLog( "a folder and b folder: \n   $aFolder\n   $bFolder\n " );
+#		printLog( "a folder and b folder: \n   $aFolder\n   $bFolder\n " );
 
 		my $aFirstIndex;
 		my $bFirstIndex;
@@ -308,46 +333,13 @@ sub getBuildSorter {
 		my $bLastIndex;
 
 		if( @firsts > 0 ) {  # An array of "first" filenames/patterns has been provided... find the index of current sort files in array
-			$aFirstIndex = first {
-				if( $firsts[$_] =~ /^=~/ ){ #TODO: externalize this logic - add support for "!~" - implement for "ignores", and "subs" (after subs implemented)
-					my $aFirstRe = substr $firsts[$_], 2;
-					return $aDirs[ $#aDirs ] =~ $aFirstRe;
-				} else {
-					return $aDirs[ $#aDirs ] eq $firsts[$_];
-				}
-			} 0 .. $#firsts;
-			$bFirstIndex  = first {
-				if( $firsts[$_] =~ /^=~/ ){
-					my $bFirstRe = substr $firsts[$_], 2;
-					return $bDirs[ $#bDirs ] =~ $bFirstRe;
-				} else {
-					return $bDirs[ $#bDirs ] eq $firsts[$_];
-				}
-			} 0 .. $#firsts;
+			$aFirstIndex = indexOfPatternArray( $firsts, $aDirs[ $#aDirs ] );
+			$bFirstIndex  = indexOfPatternArray( $firsts, $bDirs[ $#bDirs ] );
 		}
 		if( @lasts > 0 ) {	# An array of "last" filenames/patterns has been provided... find the index of current sort files in array
-			$aLastIndex = first {
-				if( $lasts[$_] =~ /^=~/ ){
-					my $aLastRe = substr $lasts[$_], 2;
-					return $aDirs[ $#aDirs ] =~ $aLastRe;
-				} else {
-					return $aDirs[ $#aDirs ] eq $lasts[$_];
-				}
-			} 0 .. $#lasts;
-			$bLastIndex = first {
-				if( $lasts[$_] =~ /^=~/ ){
-					my $bLastRe = substr $lasts[$_], 2;
-					return $bDirs[ $#bDirs ] =~ $bLastRe;
-				} else {
-					return $bDirs[ $#bDirs ] eq $lasts[$_];
-				}
-			} 0 .. $#lasts;
+			$aLastIndex = indexOfPatternArray( $lasts, $aDirs[ $#aDirs ] );
+			$bLastIndex = indexOfPatternArray( $lasts, $bDirs[ $#bDirs ] )
 		}
-
-		if(!defined($aFirstIndex)){	$aFirstIndex = -1;	}
-		if(!defined($bFirstIndex)){	$bFirstIndex = -1;	}
-		if(!defined($aLastIndex)){	$aLastIndex = -1;	}
-		if(!defined($bLastIndex)){	$bLastIndex = -1;	}
 
 		my $aIsAFirst = ( $aFirstIndex > -1 ) ? 1 : 0;
 		my $bIsAFirst = ( $bFirstIndex > -1 ) ? 1 : 0;
@@ -360,7 +352,7 @@ sub getBuildSorter {
 			and
 				(	$aFolder eq $bFolder )
 			) {
-				#printLog( "both are marked for first and are in the same directory, use the  passed array file sorting rules." );
+#				printLog( "both are marked for first and are in the same directory, use the  passed array file sorting rules." );
 				printOrder( $aFirstIndex <=> $bFirstIndex );
 				return $aFirstIndex <=> $bFirstIndex;
 			}
@@ -520,10 +512,11 @@ sub makeFiles {
 
 					# generate relative path
 
+
 					$relPath = File::Spec->abs2rel( $fromFile, $root ); #$fromFile; #
 					#$relPath =~ s/\Q$location\U//;
 					#$relPath =~ s/\\/\//g;
-					#printLog( "rel? $relPath" );
+			#		printLog( "rel? $relPath" );
 					$relPath = "$sourceUrl$relPath";    #remains relative as long as $sourceUrl has not been set
 					$tmpStr = $includeString;
 
@@ -549,6 +542,7 @@ sub moveToTarget {
 	my $bin = $config->{ folders }->{ build };
 	my $build = $config->{ build };
 	my $root = $config->{ root };
+	my $doDeletes = $config->{ doDeletes };
 	my $doCompression = $config->{ prod }->{ compression };
 	my $cmpExe = $config->{ prod }->{ compressor }->{ exe };
 	my $cmpExeArgs = $config->{ prod }->{ compressor }->{ exeArgs };    #default to "-jar"
@@ -598,7 +592,9 @@ sub moveToTarget {
 		-e $buildFolder or mkdir $buildFolder or warn "Cannot make $buildFolder";
 
 		printLog( "	emptying $buildFolder of $ext files" );
-		emptyDirOfType( $buildFolder, $ext );
+		if( $doDeletes ){
+			emptyDirOfType( $buildFolder, $ext );
+		}
 
 		foreach $fileName ( keys %{ $files->{ $type } } ){
 			$file = File::Spec->catfile( $scratch, "$fileName.$ext" );

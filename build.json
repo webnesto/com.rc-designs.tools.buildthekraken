@@ -12,6 +12,7 @@
 	,	"build":   "bin"                      // target for built files.  NOTE: will be placed inside filetype directory: "root"/[js/css/html]/"build"
 	,	"package": "pkg"                      // TODO: target for package of files (if production.package flag set to true).  NOTE: files will be placed inside filetype sub-directory: "root"/"package"/[js/css/html]
 	}
+,	"doDeletes": "true"
 ,	"keepScratch": "false"                    // when true, prevents removal of scratch directory upon completion ( note: if not deleting, and scratch in source dir - scratch should be added to ignores lists )
 ,	"types": [ "js","css","html" ]            // types of files to be grouped / built.
 ,	"ignores": [                              // global folders ignored ( ignored for all file types )
