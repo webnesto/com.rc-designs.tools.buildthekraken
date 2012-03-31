@@ -21,6 +21,8 @@
 ,	"typeProps": {
 		"js": {
 			"extension": "js"
+//		,	"extension_out": "jcrazy"         // Optional - different extension for generated file(s)
+//		,	"extension_out_dev": "jcrazier"   // Optional - different extension for use in "dev_include" paths ( and imports)
 		,	"block_comment": "/*! -CONTENT- */"
 		,	"dev_include": "document.write('<scr'+'ipt type=\"text/javascript\" src=\"-CONTENT-\"></scr'+'ipt>')"
 		,	"compressable": "true"

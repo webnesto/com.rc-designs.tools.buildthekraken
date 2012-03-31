@@ -244,7 +244,7 @@ sub parseProdContent {
 }
 
 sub parseDevContent {
-	my ( $file, $includeString, $sourceUrl, $location ) = @_;
+	my ( $file, $includeString, $sourceUrl, $location, $extension_out_dev ) = @_;
 	my $tmpStr;
 	my $importPath;
 	my $import;
@@ -257,11 +257,12 @@ sub parseDevContent {
 
 			if ( $line =~ /\#build_import\s*([^\s]*)/ ) {
 				$import = "$sourceUrl$1";
+				$import = replaceExtension( $import, $extension_out_dev );
 				$tmpStr = $includeString;
 				$tmpStr =~ s/$REPLACE/$import/;
 				$importPath = $importPath = File::Spec->catfile( $location, $import );
 				printLog( "	dev - importing: $tmpStr" );
-				$recurse = parseDevContent( $importPath, $includeString, $sourceUrl );
+				$recurse = parseDevContent( $importPath, $includeString, $sourceUrl, $extension_out_dev );
 				if( $recurse ){
 					$ret.= $recurse;
 				}
@@ -272,6 +273,14 @@ sub parseDevContent {
 		undef $fileIO;
 	}
 	return $ret;
+}
+
+sub replaceExtension{
+	my ( $path, $ext ) = @_;
+	if( $ext ){
+		$path =~ s/(.*)\.[^\.]*$/$1.$ext/;
+	}
+	return $path;
 }
 
 
@@ -327,10 +336,10 @@ sub getBuildSorter {
 
 #		printLog( "a folder and b folder: \n   $aFolder\n   $bFolder\n " );
 
-		my $aFirstIndex;
-		my $bFirstIndex;
-		my $aLastIndex;
-		my $bLastIndex;
+		my $aFirstIndex = -1;
+		my $bFirstIndex = -1;
+		my $aLastIndex = -1;
+		my $bLastIndex = -1;
 
 		if( @firsts > 0 ) {  # An array of "first" filenames/patterns has been provided... find the index of current sort files in array
 			$aFirstIndex = indexOfPatternArray( $firsts, $aDirs[ $#aDirs ] );
@@ -449,6 +458,7 @@ sub makeFiles {
 	my $keepers = $config->{ prod }->{ keep };
 	my $type;
 	my $ext;
+	my $ext_out;
 	my $ext_build;
 	my $fileName;
 	my $file;
@@ -457,6 +467,7 @@ sub makeFiles {
 	my $blockComment;
 	my $buildSort;
 	my $includeString;
+	my $extension_out_dev;
 	my $tmpFile;
 	my $tmpStr;
 	my $relPath;
@@ -475,16 +486,16 @@ sub makeFiles {
 	foreach $type( keys %{ $files } ){
 		$typeProps = $config->{ typeProps }->{ $type };
 		$ext = $typeProps->{ extension };
+		$ext_out = $typeProps->{ extension_out } ? $typeProps->{ extension_out } : $ext;
 		$ext_build = ( $typeProps->{ build } ) ? $typeProps->{ build } : $ext;
+		$extension_out_dev = $typeProps->{ extension_out_dev };
 		$blockComment = $typeProps->{ block_comment };
 		$blockComment =~ s/$REPLACE/$WARNING/;
 		$includeString = $typeProps->{dev_include};
 		$outputPath = File::Spec->catpath( $root, $ext_build, $folders_build );
 
-		printLog( "OUTPUT PATH: $outputPath" );
-
 		foreach $fileName ( keys %{ $files->{ $type } } ){
-			$file = File::Spec->catfile( $scratch, "$fileName.$ext" );
+			$file = File::Spec->catfile( $scratch, "$fileName.$ext_out" );
 
 			printLog( "making file: $file" );
 			open FILE, ">$file" or die "Could not open $file\n";
@@ -504,7 +515,7 @@ sub makeFiles {
 				} elsif ( $build eq $BUILD_DEV ) {
 					my $tmpStr;
 					my $arg;
-					$tmpStr = parseDevContent( $fromFile, $includeString, $sourceUrl, $location );
+					$tmpStr = parseDevContent( $fromFile, $includeString, $sourceUrl, $location , $extension_out_dev );
 					if( $tmpStr ){
 						print FILE $tmpStr;
 					}
@@ -518,6 +529,7 @@ sub makeFiles {
 					#$relPath =~ s/\\/\//g;
 			#		printLog( "rel? $relPath" );
 					$relPath = "$sourceUrl$relPath";    #remains relative as long as $sourceUrl has not been set
+					$relPath = replaceExtension( $relPath, $extension_out_dev );
 					$tmpStr = $includeString;
 
 					$tmpStr =~ s/$REPLACE/$relPath/;
@@ -553,6 +565,7 @@ sub moveToTarget {
 	my $typeProps;
 	my $buildFolder;
 	my $ext;
+	my $ext_out;
 	my $fileName;
 	my $file;
 	my $minFile;
@@ -578,6 +591,7 @@ sub moveToTarget {
 	foreach $type( keys %{ $files } ){
 		$typeProps = $config->{ typeProps }->{ $type };
 		$ext = $typeProps->{ extension };
+		$ext_out = $typeProps->{ extension_out } ? $typeProps->{ extension_out } : $ext;
 		$buildFolder = $typeProps->{ build };
 		$compressable = $typeProps->{ compressable };
 
@@ -591,14 +605,14 @@ sub moveToTarget {
 
 		-e $buildFolder or mkdir $buildFolder or warn "Cannot make $buildFolder";
 
-		printLog( "	emptying $buildFolder of $ext files" );
+		printLog( "	emptying $buildFolder of $ext_out files" );
 		if( $doDeletes ){
-			emptyDirOfType( $buildFolder, $ext );
+			emptyDirOfType( $buildFolder, $ext_out );
 		}
 
 		foreach $fileName ( keys %{ $files->{ $type } } ){
-			$file = File::Spec->catfile( $scratch, "$fileName.$ext" );
-			$minFile = File::Spec->catfile( $scratch, $MIN, "$fileName.$ext" );
+			$file = File::Spec->catfile( $scratch, "$fileName.$ext_out" );
+			$minFile = File::Spec->catfile( $scratch, $MIN, "$fileName.$ext_out" );
 			if(
 				( $build eq $BUILD_PROD )
 			&&	( $doCompression )
@@ -611,7 +625,7 @@ sub moveToTarget {
 				copy( $file, $minFile ) or warn "Could not copy $file to $minFile: $!";
 			}
 
-			$finalFile = File::Spec->catfile( $buildFolder, "$fileName.$ext" );
+			$finalFile = File::Spec->catfile( $buildFolder, "$fileName.$ext_out" );
 			copy( $minFile, $finalFile ) or warn "Could not copy $minFile, to $finalFile: $!";
 
 			printLog("	created $finalFile" );
