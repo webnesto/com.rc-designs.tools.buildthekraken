@@ -128,8 +128,7 @@ sub getConfigs {
 }
 
 sub getFilenamesByType {
-	my ( $location, $config, $filesToDocument ) = @_;
-	my $doDocumentation = $config->{ document };
+	my ( $location, $config, $filesForSourceCommands ) = @_;
 	my $documentable;
 	my $typeProps;
 	my $targetedSource;
@@ -142,9 +141,9 @@ sub getFilenamesByType {
 
 	for my $filetype ( @{ $config->{ types } } ){
 		$typeProps = $config->{ typeProps }->{ $filetype } or die "No properties for filetype: $filetype";
-		$documentable = $typeProps->{ documentable };
 		$ext = $typeProps->{ extension } or die "No extension for filetype: $filetype";
 		@ignores = ( @{ $config->{ ignores } }, @{ $typeProps->{ ignores } } );
+		$filesForSourceCommands->{ $ext } = [];
 
 		printLog( "processing $ext" );
 		if( !defined( $return->{ $ext } ) ){
@@ -175,10 +174,8 @@ sub getFilenamesByType {
 						my $relFile;
 						if ( $file =~ /\.($ext)$/) {
 							push( @{ $extFiles->{ $folder } }, $file );
-							if( $doDocumentation && $documentable ){
-								$relFile = File::Spec->abs2rel( $file, $targetedSource );
-								push( @{ $filesToDocument }, $relFile );
-							}
+							$relFile = File::Spec->abs2rel( $file, $targetedSource );
+							push( @{ $filesForSourceCommands->{ $ext } }, $relFile );
 							printLog( "		file: $_" );
 						}
 					}
@@ -200,7 +197,7 @@ sub getFilenamesByType {
 
 	chdir $location; #get back to where we were
 
-	return $return, $filesToDocument;
+	return $return, $filesForSourceCommands;
 }
 
 sub parseProdContent {
@@ -216,7 +213,7 @@ sub parseProdContent {
 
 			if ( $line =~ /\#build_import\s*([^\s]*)/ ) {
 				$importPath = File::Spec->catfile( $location, $1 );
-				$ret.= parseProdContent( $importPath, \@argStates, \@includedArgs );
+				$ret.= parseProdContent( $importPath, \@argStates, \@includedArgs, $location );
 			} else {
 
 				if(
@@ -228,7 +225,7 @@ sub parseProdContent {
 				}
 				if ( $line =~ /\#ifdef\s*(\w+)/ ) {
 					my $arg = $1;
-					if ( Utils::indexOf( $arg, \@includedArgs ) && ( $argStates[0] ) ) {
+					if ( Utils::indexOf( $arg, \@includedArgs ) > -1 && ( $argStates[0] ) ) {
 						unshift( @argStates, 1 );
 					} else {
 						unshift( @argStates, 0 );
@@ -239,6 +236,8 @@ sub parseProdContent {
 
 		}
 		undef $fileIO;
+	} else {
+		die "does not exist for parsing. $file"
 	}
 	return $ret;
 }
@@ -260,7 +259,7 @@ sub parseDevContent {
 				$import = replaceExtension( $import, $extension_out_dev );
 				$tmpStr = $includeString;
 				$tmpStr =~ s/$REPLACE/$import/;
-				$importPath = $importPath = File::Spec->catfile( $location, $import );
+				$importPath = File::Spec->catfile( $location, $import );
 				printLog( "	dev - importing: $tmpStr" );
 				$recurse = parseDevContent( $importPath, $includeString, $sourceUrl, $extension_out_dev );
 				if( $recurse ){
@@ -312,7 +311,7 @@ sub indexOfPatternArray{
 	unless( defined $return ){
 		$return = -1;
 	}
-	printLog( "returning $return for $target" );
+#	printLog( "returning $return for $target" );
 	return $return;
 }
 
@@ -520,9 +519,7 @@ sub makeFiles {
 						print FILE $tmpStr;
 					}
 
-
 					# generate relative path
-
 
 					$relPath = File::Spec->abs2rel( $fromFile, $root ); #$fromFile; #
 					#$relPath =~ s/\Q$location\U//;
@@ -555,11 +552,6 @@ sub moveToTarget {
 	my $build = $config->{ build };
 	my $root = $config->{ root };
 	my $doDeletes = $config->{ doDeletes };
-	my $doCompression = $config->{ prod }->{ compression };
-	my $cmpExe = $config->{ prod }->{ compressor }->{ exe };
-	my $cmpExeArgs = $config->{ prod }->{ compressor }->{ exeArgs };    #default to "-jar"
-	my $cmpEng = $config->{ prod }->{ compressor }->{ engine };
-	my $cmpEngArgs = $config->{ prod }->{ compressor }->{ engArgs };
 	my $minPath;
 	my $type;
 	my $typeProps;
@@ -571,6 +563,8 @@ sub moveToTarget {
 	my $minFile;
 	my $finalFile;
 	my $compressable;
+	my @commands;
+	my $command;
 
 	if( File::Spec->file_name_is_absolute( $root ) ){
 		$root = $root;
@@ -582,19 +576,17 @@ sub moveToTarget {
 
 	$minPath = File::Spec->catdir( $scratch, $MIN );
 	-e $minPath or mkdir $minPath or warn "Cannot make $minPath: $!";
-	if ( $build eq $BUILD_PROD ) {
-		if( !-e $cmpEng ){
-			$cmpEng = File::Spec->catfile( $Bin, $cmpEng );
-		}
-		printLog( "using compEng: $cmpEng " );
-	}
+
 	foreach $type( keys %{ $files } ){
 		$typeProps = $config->{ typeProps }->{ $type };
 		$ext = $typeProps->{ extension };
 		$ext_out = $typeProps->{ extension_out } ? $typeProps->{ extension_out } : $ext;
 		$buildFolder = $typeProps->{ build };
-		$compressable = $typeProps->{ compressable };
-
+		if( $build eq $BUILD_PROD ){
+			@commands = ( $typeProps->{ production_commands } ) ? @{ $typeProps->{ production_commands } } : ();
+		} else {
+			@commands = ( $typeProps->{ development_commands } ) ? @{ $typeProps->{ development_commands } } : ();
+		}
 
 		if( $buildFolder eq "" ){
 			$buildFolder = File::Spec->catdir( $root, $ext );
@@ -606,6 +598,7 @@ sub moveToTarget {
 		-e $buildFolder or mkdir $buildFolder or warn "Cannot make $buildFolder";
 
 		printLog( "	emptying $buildFolder of $ext_out files" );
+
 		if( $doDeletes ){
 			emptyDirOfType( $buildFolder, $ext_out );
 		}
@@ -615,12 +608,19 @@ sub moveToTarget {
 			$minFile = File::Spec->catfile( $scratch, $MIN, "$fileName.$ext_out" );
 			if(
 				( $build eq $BUILD_PROD )
-			&&	( $doCompression )
-			&&	( $compressable )
 			){
-				printLog( "compressing file: $file" );
-				printLog( "trying: \"$cmpExe\" $cmpExeArgs \"$cmpEng\" \"$file\" -o \"$minFile\" $cmpEngArgs" );
-				`\"$cmpExe\" $cmpExeArgs \"$cmpEng\" \"$file\" -o \"$minFile\" $cmpEngArgs`;
+				copy( $file, $minFile ) or warn "Could not copy $file to $minFile: $!";
+#				printLog( "running production commands on file: $file" );
+				foreach $command ( @commands ){
+					my $scriptPath = '{scriptsPath}';
+					my $infile = '{infile}';
+					my $outfile = '{outfile}';
+					$command =~ s/$scriptPath/$Bin/g;
+					$command =~ s/$infile/$minFile/g;
+					$command =~ s/$outfile/$minFile/g;
+					printLog( "trying $command" );
+					`$command`;
+				}
 			} else {
 				copy( $file, $minFile ) or warn "Could not copy $file to $minFile: $!";
 			}
@@ -633,62 +633,58 @@ sub moveToTarget {
 	}
 }
 
-sub document {
-	printLog( "beginning documentation generation" );
-	my ( $config, $location, $filesToDocument ) = @_;
-	my $documenter = $config->{ documenter };
-	my $dcmntEngArgs = $documenter->{engArgs};
-	my @dcmntEngs = @{ $documenter->{engines} };
-	my $dcmntEngPath = $documenter->{enginePath};
-	my $dcmntExeArgs = $documenter->{exeArgs};
-	my $dcmntExe = $documenter->{exe};
-	my $dcmntEng;
-	my $engPart;
+sub doSourceCommands {
+	printLog( "beginning source commands" );
+	my ( $config, $location, $filesForSourceCommands ) = @_;
 	my $root = $config->{ root };
-	my $argsString = "";
-	my $arg;
-	my $value;
-	my $baseDir;
+	my $typeProps;
+	my $doCommands;
+	my $build = $config->{ build } || $BUILD_PROD;
+	my @files;
+	my $ext;
+	my @source_commands;
+	my $command;
+	my $filelist;
+
+	my $scriptPath = '{scriptsPath}';
+	my $filesVar = '{files}';
+	my $rootVar = '{root}';
+
 
 	if( File::Spec->file_name_is_absolute( $root ) ){
 		$root = $root;
 	} else {
 		$root = File::Spec->catfile( $location, $root );
+		$root = Cwd::realpath( $root );
 	}
 
-
-	for $arg ( keys %{ $dcmntEngArgs } ) {
-		$value = $dcmntEngArgs->{$arg};
-		$baseDir = 0;
-
-		if( $arg eq "d" ){
-			$baseDir = $root;
-		} elsif( $arg eq "t" ){
-			$baseDir = $Bin;  # TODO: how to handle relative to root/run dir?
-		}
-		$value = File::Spec->catdir($baseDir, $value) if $baseDir;
-
-		if( $value ne "true"){
-			$argsString = $argsString." -$arg=$value";
+	for $ext ( keys %{ $filesForSourceCommands } ) {
+		$typeProps = $config->{ typeProps }->{ $ext };
+		@files = @{ $filesForSourceCommands->{ $ext } };
+		$filelist = "@files";
+		@source_commands = ( $typeProps->{ source_commands } ) ? @{ $typeProps->{ source_commands } } : ();
+		$doCommands = $typeProps->{ do_source_commands } || "";
+		if(
+			$doCommands eq $build
+		or	$doCommands eq "both"
+		){
+			$doCommands = 1;
 		} else {
-			$argsString = $argsString." -$arg";
+			$doCommands = 0;
+		}
+		if( $doCommands ){
+			foreach $command ( @source_commands ){
+
+				$command =~ s/$scriptPath/$Bin/g;
+				$command =~ s/$filesVar/$filelist/g;
+				$command =~ s/$rootVar/$root/g;
+				printLog( "	trying: $command" );
+				`$command`;
+			}
 		}
 	}
 
-	$dcmntEng = "";
-	$dcmntEngPath = File::Spec->catdir($Bin, $dcmntEngPath);
-	for $engPart (@dcmntEngs) {
-		my $tmpPath = File::Spec->catfile( $dcmntEngPath, $engPart );
-		$dcmntEng = $dcmntEng . " " . $tmpPath;
-	}
-
-	printLog( "files to document: @{ $filesToDocument }" );
-
-	printLog( "\"$dcmntExe\" $dcmntExeArgs $dcmntEng $argsString @{ $filesToDocument } " );
-
-	`\"$dcmntExe\" $dcmntExeArgs $dcmntEng $argsString @{ $filesToDocument }`;
-
-	printLog( "ending documentation generation" );
+	printLog( "ending source commands" );
 }
 
 sub run {
@@ -699,18 +695,17 @@ sub run {
 	my $build = $config->{ build } || $BUILD_PROD;
 	my $location = Cwd::getcwd();
 	my $scratch = $config->{ folders }->{ scratch };
-	my $doDocumentation = $config->{ document };
 	my $minPath;
 	my $keepScratch = $config->{ keepScratch };
 
 	#TODO: implement subs iteration - allow arguments for subs - default "current" directory.
 
-	my ( $files, $filesToDocument ) = getFilenamesByType( $location, $config, \() );
+	my ( $files, $filesForSourceCommands ) = getFilenamesByType( $location, $config, {} );
 	-e $scratch or mkdir $scratch, 0777 or warn "Cannot make $scratch directory: $!";
 	makeFiles( $config, $files, $location );
 	moveToTarget( $config, $files, $location );
 
-	printLog( "Currently: ". Cwd::getcwd(). " old: $location" );
+#	printLog( "Currently: ". Cwd::getcwd(). " old: $location" );
 	if(
 		( defined $scratch )
 	&&	( !$keepScratch )
@@ -726,9 +721,7 @@ sub run {
 		}
 	}
 
-	if ( $doDocumentation ) {
-		document( $config, $location, $filesToDocument );
-	}
+	doSourceCommands( $config, $location, $filesForSourceCommands );
 
 	logEnd( $build );
 }

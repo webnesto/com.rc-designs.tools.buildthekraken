@@ -1,5 +1,6 @@
 // Single line comments only allowed (not technically JSON compliant, but allows for non-value commenting)
 // Use "/" for file paths.  If not, "\" must be escaped (NOTE: will work in Windows either way);
+// TODO: when documenting use - be sure to indicate that any array properties are completely overrwritten when specified in additional build files.
 {
 	"build": "prod"                           // "prod" build type - only valid values are "prod" and "dev"
 ,	"root": ""                                // default's to working directory
@@ -12,7 +13,7 @@
 	,	"build":   "bin"                      // target for built files.  NOTE: will be placed inside filetype directory: "root"/[js/css/html]/"build"
 	,	"package": "pkg"                      // TODO: target for package of files (if production.package flag set to true).  NOTE: files will be placed inside filetype sub-directory: "root"/"package"/[js/css/html]
 	}
-,	"doDeletes": "true"
+,	"doDeletes": "true"                       // when true, target folders contents will be stripped of file type before build insertion (clears out dead wood) - TODO: allow on a type by type basis.
 ,	"keepScratch": "false"                    // when true, prevents removal of scratch directory upon completion ( note: if not deleting, and scratch in source dir - scratch should be added to ignores lists )
 ,	"types": [ "js","css","html" ]            // types of files to be grouped / built.
 ,	"ignores": [                              // global folders ignored ( ignored for all file types )
@@ -25,8 +26,6 @@
 //		,	"extension_out_dev": "jcrazier"   // Optional - different extension for use in "dev_include" paths ( and imports)
 		,	"block_comment": "/*! -CONTENT- */"
 		,	"dev_include": "document.write('<scr'+'ipt type=\"text/javascript\" src=\"-CONTENT-\"></scr'+'ipt>')"
-		,	"compressable": "true"
-		,	"documentable": "true"
 		,	"ignores": [                      // Foldernames to ignore
 //				"folderName"                  // Example - ignores folder named "folderName"
 			]
@@ -41,13 +40,20 @@
 		,	"build"	: ""                      // Relative to root.  If any value,  root/[value]/[folders.build]/ will be used instead of root/[extension]/[folders.build]/
 		,	"prepend": ""                     // will prepend all content - good for wrapper functions
 		,	"postpend": ""                    // will finish content - good for closing wrapper functions
+		,	"production_commands" : [         // commands run once for each "built" files in a production build.  Available variables "{scriptsPath}", "{infile}", "{outfile}"
+				"java  -jar \"{scriptsPath}/ext/yuicompressor-2.4.2.jar\" {infile} -o {outfile}  --line-break 1000" // -v"
+			]
+		,	"development_commands" : [        // will be run once for each "built" files in a development build.  Available variables "{scriptsPath}", "{infile}", "{outfile}"
+			]
+		,	"source_commands" : [             // will be run once (TODO: dev/prod tbd) - passed a space separated list of all source files in variable {files} position.
+				"java  -jar  \"{scriptsPath}/ext/jsdoc-toolkit/jsrun.jar\" \"{scriptsPath}/ext/jsdoc-toolkit/app/run.js\" -a -r=10 -d={root}/../docs/js -t={scriptsPath}/ext/jsdoc-toolkit/templates/jsdoc {files}"
+			]
+		,	"do_source_commands": "prod"       // possible values are "dev", "prod", "both", "none"
 		}
 	, "css": {
 			"extension": "css"
 		,	"block_comment": "/*! -CONTENT- */"
 		,	"dev_include": "@import \"-CONTENT-\";"
-		,	"compressable": "true"
-		,	"documentable": "false"
 		,	"ignores": []
 		,	"firsts": []
 		,	"lasts": []
@@ -55,13 +61,31 @@
 		,	"build"	: ""
 		,	"prepend": ""
 		,	"postpend": ""
+		,	"production_commands" : [
+				"java  -jar \"{scriptsPath}/ext/yuicompressor-2.4.2.jar\" {infile} -o {outfile}  --line-break 1000 " //-v"
+			]
+		}
+	,	"less": {
+			"extension": "less"
+		,	"extension_out": "css"
+		,	"block_comment": "/* -CONTENT- */"
+		,	"dev_include": "@import \"-CONTENT-\";"
+		,	"ignores": []
+		,	"firsts": []
+		,	"lasts": []
+		,	"folder": ""
+		,	"build"	: "css/bin"
+		,	"prepend": ""
+		,	"postpend": ""
+		,	"production_commands" : [
+				"java -jar \"{scriptsPath}/ext/rhino/js.jar\" \"{scriptsPath}/ext/less-rhino-1.1.5.js\" {infile} {outfile}"
+			,	"java -jar \"{scriptsPath}/ext/yuicompressor-2.4.2.jar\" {infile} -o {outfile}  --line-break 1000 " //-v"
+			]
 		}
 	, "html": {
 			"extension": "html"
 		,	"block_comment": "<!-- -CONTENT- -->"
 		,	"dev_include": "<!--#include virtual=\"-CONTENT-\" -->"
-		,	"compressable": "false"
-		,	"documentable": "false"
 		,	"ignores": []
 		,	"firsts": []
 		,	"lasts": []
@@ -72,14 +96,7 @@
 		}
 	}
 ,	"prod": {                                 // Only used in production builds
-		"compression": "true"                 // Whether or not to use compression
-	,	"compressor": {                       // Used to compress your output files
-			"exe": "java"
-		,	"exeArgs": " -jar"
-		,	"engine": "ext/yuicompressor-2.4.2.jar"
-		,	"engArgs": " --line-break 1000 -v"
-		}
-	, 	"package": "false"
+	 	"package": "false"
 	,	"keep": [                             // Variables for use in preprocessing - keys included will be kept
 //		,	"debug"                           // Example - This would ensure that all code enclosed in #ifdef debug -> #endif blocks will be included (unless innerblock disables)
 //		,	"debugInner"                      // Example - This would ensure that all code encolsed in #ifdef debugInner -> #endif blocks will be included (unless innerblock disables)
@@ -88,21 +105,5 @@
 	}
 ,	"dev": {
 		"url": ""                             // Prepended to all paths in dev build - No trailing slashes
-	}
-,	"document": "true"                       // Whether or not to document - defaults to true for prod-build, false for dev build.  Setting in config will override.
-,	"documenter": {                           // Used to document your output files
-		"exe": "java"                         // defaults to "java" - could have absolute value: e.g. C:/Program Files/Java/jre1.6.0_20/bin/java.exe
-	,	"exeArgs": " -jar"
-	,	"enginePath": "ext/jsdoc-toolkit"     // expected to be relative to working directory
-	,	"engines": [
-			"/jsrun.jar"                      // expected to be relative enginePath
-		,	"/app/run.js"                     // expected to be relative enginePath
-		]
-	,	"engArgs": {
-			"d": "docs/js"                    // path for output (relative to root directory)
-		,	"r": "10"                         // recursion depth
-		,	"a": "true"                       // all functions documented (even un-commented ones)
-		,	"t"	: "ext/jsdoc-toolkit/templates/jsdoc"   // path to templates (relative to builder dir)
-		}
 	}
 }
