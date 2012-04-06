@@ -9,11 +9,11 @@
 ,	"typeProps" : {
 		"js" : {
 			"firsts" : [
-				"=~^at_set"
+				"jquery"
 			]
-		, 	"lasts" : [
-				"=~^at_unset"
-			]
+		// , 	"lasts" : [
+				// "=~^at_unset"
+			// ]
 		}
 	}
 }
