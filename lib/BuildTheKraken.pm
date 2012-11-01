@@ -607,7 +607,7 @@ sub moveToTarget {
 			emptyDirOfType( $buildFolder, $ext_out );
 		}
 
-		foreach $fileName ( keys %{ $files->{ $type } } ){
+		foreach $fileName ( keys %{ $files->{ $type } } ){ #TODO: this iteration doesn't seem to be working
 			$file = File::Spec->catfile( $scratch, "$fileName.$ext_out" );
 			$minFile = File::Spec->catfile( $scratch, $MIN, "$fileName.$ext_out" );
 			if(

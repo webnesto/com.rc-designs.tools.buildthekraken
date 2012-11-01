@@ -130,6 +130,7 @@ foreach $css_file (@css_files) {
 			print FILEPART $import;
 			$import_count = $import_count + 1;
 			if( $import_count == $MAX ){
+				$import_count = 0;
 				close FILEPART;
 				$file_count = $file_count + 1;
 				&startSubfile(
