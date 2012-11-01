@@ -566,6 +566,7 @@ sub moveToTarget {
 	my $finalFile;
 	my $compressable;
 	my @commands;
+	my $rawcommand;
 	my $command;
 
 	if( File::Spec->file_name_is_absolute( $root ) ){
@@ -607,7 +608,8 @@ sub moveToTarget {
 			emptyDirOfType( $buildFolder, $ext_out );
 		}
 
-		foreach $fileName ( keys %{ $files->{ $type } } ){ #TODO: this iteration doesn't seem to be working
+		foreach $fileName ( keys %{ $files->{ $type } } ){
+
 			$file = File::Spec->catfile( $scratch, "$fileName.$ext_out" );
 			$minFile = File::Spec->catfile( $scratch, $MIN, "$fileName.$ext_out" );
 			if(
@@ -615,7 +617,9 @@ sub moveToTarget {
 			){
 				copy( $file, $minFile ) or printLog( "Could not copy $file to $minFile: $!" );
 #				printLog( "running production commands on file: $file" );
-				foreach $command ( @commands ){
+				foreach $rawcommand ( @commands ){
+					$command = $rawcommand;
+					printLog( "rawcommand: $command" );
 					my $scriptPath = '{scriptsPath}';
 					my $infile = '{infile}';
 					my $outfile = '{outfile}';
