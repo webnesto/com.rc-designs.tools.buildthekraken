@@ -4,6 +4,7 @@
 {
 	"build": "prod"                           // "prod" build type - only valid values are "prod" and "dev"
 ,	"root": ""                                // default's to working directory
+,	"importroot": "."                         // relative to root
 // NOTE: "subs" not yet implemented
 //,	"subs": [                                 // series of subfolders to parse as "src" - inherently added to global ignores.
 //		""                                    // working directory

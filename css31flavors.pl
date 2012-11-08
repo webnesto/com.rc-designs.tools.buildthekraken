@@ -32,6 +32,7 @@ use strict;
 use warnings;
 
 use File::Basename;
+use File::Find;
 use File::Spec;
 use POSIX;
 use Utils qw( printLog );
@@ -72,10 +73,6 @@ if (@ARGV){
 }
 printLog( "target directory is $targetDir" );
 
-chdir $targetDir;
-@css_files = glob "*.css";
-
-
 sub startSubfile {
 	my (
 		$subfile
@@ -90,9 +87,18 @@ sub startSubfile {
 	print TMPFILE "\@import \"$filename"."_"."$file_count.css\";\n";
 }
 
+sub wanted {
+	if( $_ =~ /\.css$/ ){
+		push(@css_files, $File::Find::name );
+	}
+}
+
+chdir $targetDir;
+#@css_files = glob "*.css";
+find( \&wanted, "." );
 
 foreach $css_file (@css_files) {
-
+	printLog( "file: $css_file" );
 	my($filename, $directories, $suffix) = fileparse($css_file, qr/\Q.css\E/);
 
 	printLog( "filename is: $filename" );

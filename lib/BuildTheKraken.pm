@@ -453,6 +453,7 @@ sub makeFiles {
 	my $scratch = $config->{ folders }->{ scratch };
 	my $folders_build = $config->{ folders }->{ build };
 	my $root = $config->{ root };
+	my $importroot = $config->{ importroot };
 	my $build = $config->{ build };
 	my $sourceUrl = $config->{ dev }->{ url };
 	my $keepers = $config->{ prod }->{ keep };
@@ -483,6 +484,8 @@ sub makeFiles {
 		$root = Cwd::realpath( $root );
 	}
 
+	$importroot = Cwd::realpath( $root . "/" . $importroot ); #TODO: why didn't catpath work here?
+
 	foreach $type( keys %{ $files } ){
 		$typeProps = $config->{ typeProps }->{ $type };
 		$ext = $typeProps->{ extension };
@@ -511,12 +514,12 @@ sub makeFiles {
 				$fromFile = Cwd::realpath( $fromFile );
 				printLog( "	adding $fromFile" );
 				if ( $build eq $BUILD_PROD ) {
-					$tmpFile = parseProdContent( $fromFile, \@argStates, $keepers, $root );
+					$tmpFile = parseProdContent( $fromFile, \@argStates, $keepers, $importroot );
 					print FILE $tmpFile if $tmpFile;
 				} elsif ( $build eq $BUILD_DEV ) {
 					my $tmpStr;
 					my $arg;
-					$tmpStr = parseDevContent( $fromFile, $includeString, $sourceUrl, $location , $extension_out_dev );
+					$tmpStr = parseDevContent( $fromFile, $includeString, $sourceUrl, $importroot , $extension_out_dev );
 					if( $tmpStr ){
 						print FILE $tmpStr;
 					}
@@ -602,13 +605,12 @@ sub moveToTarget {
 
 		-e $buildFolder or mkdir $buildFolder or printLog( "Cannot make buildFolder: $buildFolder" );
 
-
 		if( $doDeletes ){
 			printLog( "	emptying $buildFolder of $ext_out files" );
 			emptyDirOfType( $buildFolder, $ext_out );
 		}
 
-		foreach $fileName ( keys %{ $files->{ $type } } ){
+		foreach $fileName ( keys %{ $files->{ $type } } ){ #TODO: this iteration doesn't seem to be working
 
 			$file = File::Spec->catfile( $scratch, "$fileName.$ext_out" );
 			$minFile = File::Spec->catfile( $scratch, $MIN, "$fileName.$ext_out" );
