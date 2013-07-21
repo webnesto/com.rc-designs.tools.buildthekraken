@@ -598,10 +598,10 @@ sub moveToTarget {
 			$buildFolder = File::Spec->catdir( $root, $ext );
 			$buildFolder = File::Spec->catdir( $buildFolder, $bin );
 		} else {
-			$buildFolder = File::Spec->catdir( $root, $buildFolder );
+			$buildFolder = File::Spec->catdir( $root, $buildFolder, $bin );
 		}
 
-		$buildFolder = Cwd::realpath( $buildFolder );
+		# $buildFolder = Cwd::realpath( $buildFolder );
 
 		-e $buildFolder or mkdir $buildFolder or printLog( "Cannot make buildFolder: $buildFolder" );
 
@@ -621,7 +621,7 @@ sub moveToTarget {
 #				printLog( "running production commands on file: $file" );
 				foreach $rawcommand ( @commands ){
 					$command = $rawcommand;
-					printLog( "rawcommand: $command" );
+					# printLog( "rawcommand: $command" );
 					my $scriptPath = '{scriptsPath}';
 					my $infile = '{infile}';
 					my $outfile = '{outfile}';

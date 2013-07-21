@@ -102,6 +102,8 @@ foreach $css_file (@css_files) {
 	my($filename, $directories, $suffix) = fileparse($css_file, qr/\Q.css\E/);
 
 	printLog( "filename is: $filename" );
+	printLog( "directories are: $directories" );
+	printLog( "css_file: $css_file" );
 
 	open FILE, "<$css_file";
 	@lines = <FILE>;
@@ -122,12 +124,12 @@ foreach $css_file (@css_files) {
 		$import_count = 0;
 		$file_count = 0;
 
-		$tmpfile = File::Spec->catfile( $targetDir,  "$filename.tmp.css" );
+		$tmpfile = File::Spec->catfile( $targetDir, "$filename.tmp.css" );
 		open TMPFILE, ">$tmpfile";
 
 		&startSubfile(
 			$subfile
-		,	$targetDir
+		,	File::Spec->catpath( $targetDir, $directories )
 		,	$filename
 		, $file_count
 		);
@@ -141,7 +143,7 @@ foreach $css_file (@css_files) {
 				$file_count = $file_count + 1;
 				&startSubfile(
 					$subfile
-				,	$targetDir
+				,	File::Spec->catpath( $targetDir, $directories )
 				,	$filename
 				, $file_count
 				);

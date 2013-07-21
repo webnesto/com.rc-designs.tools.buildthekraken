@@ -42,7 +42,7 @@
 		,	"prepend": ""                     // will prepend all content - good for wrapper functions
 		,	"postpend": ""                    // will finish content - good for closing wrapper functions
 		,	"production_commands" : [         // commands run once for each "built" files in a production build.  Available variables "{scriptsPath}", "{infile}", "{outfile}"
-				"java  -jar \"{scriptsPath}/ext/yuicompressor-2.4.2.jar\" {infile} -o {outfile}  --line-break 1000" // -v"
+				"java  -jar \"{scriptsPath}/ext/yuicompressor-2.4.7.jar\" {infile} -o {outfile}  --line-break 1000" // -v"
 			]
 		,	"development_commands" : [        // will be run once for each "built" files in a development build.  Available variables "{scriptsPath}", "{infile}", "{outfile}"
 			]
@@ -63,7 +63,7 @@
 		,	"prepend": ""
 		,	"postpend": ""
 		,	"production_commands" : [
-				"java  -jar \"{scriptsPath}/ext/yuicompressor-2.4.2.jar\" {infile} -o {outfile}  --line-break 1000 " //-v"
+				"java  -jar \"{scriptsPath}/ext/yuicompressor-2.4.7.jar\" {infile} -o {outfile}  --line-break 1000 " //-v"
 			]
 		}
 	,	"less": {
@@ -80,7 +80,7 @@
 		,	"postpend": ""
 		,	"production_commands" : [
 				"java -jar \"{scriptsPath}/ext/rhino/js.jar\" \"{scriptsPath}/ext/less-rhino-1.1.5.js\" {infile} {outfile}"
-			,	"java -jar \"{scriptsPath}/ext/yuicompressor-2.4.2.jar\" {infile} -o {outfile}  --line-break 1000 " //-v"
+			,	"java -jar \"{scriptsPath}/ext/yuicompressor-2.4.7.jar\" {infile} -o {outfile}  --line-break 1000 " //-v"
 			]
 		}
 	, "html": {
